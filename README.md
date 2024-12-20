@@ -1,65 +1,60 @@
 # INDICIUM Challenge
 
-Este projeto utiliza o Apache Airflow para orquestrar um processo ETL que extrai dados de um banco de dados PostgreSQL, realiza transformações e carrega os dados em um novo banco de dados. O processo também inclui a carga de dados de um arquivo CSV para o banco de dados de destino.
+This project uses Apache Airflow to orchestrate an ETL process that extracts data from a PostgreSQL database, performs transformations, and loads the data into a new database. The process also includes loading data from a CSV file into the target database.
 
-## Requisitos
+## Requirements
 
 - Docker
 - Docker Compose
-- Python 3.x (para Airflow e bibliotecas necessárias)
+- Python 3.x (for Airflow and required libraries)
 
-## Estrutura do Projeto
+## Project Structure
 
-O projeto é composto pelos seguintes arquivos e diretórios:
+The project consists of the following files and directories:
 
-- **DAGs**: Definição das tarefas do Airflow e fluxo de trabalho.
-- **Docker Compose**: Configuração dos containers necessários (Airflow, PostgreSQL, etc).
-- **Scripts Python**: Funções de ETL para extrair, transformar e carregar os dados.
+- **DAGs**: Definition of Airflow tasks and workflow.
+- **Docker Compose**: Configuration of the necessary containers (Airflow, PostgreSQL, etc.).
+- **Python Scripts**: ETL functions to extract, transform, and load data.
 
-## Como Rodar
+## How to Run:
 
-### 1. Clonar o Repositório
+### 1. Clone the Repository
+### 2. Update Environment Variables
+Modify the .env file with appropriate environment variables.
 
-Clone o repositório do projeto para sua máquina local.
-
-
-git clone <url-do-repositorio>
-cd <diretorio-do-projeto>
-
-
-### 2. Docker
+### 3. Start Docker
 docker-compose up -d
 
-### 3. Airflow UI
+### 4. Airflow UI
 localhost:8080
 
 
-### 4. Criar Conexões no Airflow
+### 4. Create Connections in Airflow
 
-Após acessar a interface do Airflow, é necessário configurar as conexões com os bancos de dados utilizados no projeto. Para isso, siga os passos abaixo:
+After accessing the Airflow interface, you need to configure the connections to the databases used in the project. Follow the steps below:
 
-1. Vá até o menu **Admin** na interface do Airflow.
-2. Selecione **Connections**.
-3. Clique em **+** para adicionar uma nova conexão.
-4. Crie as seguintes conexões:
+1. Go to the Admin menu in the Airflow interface.
+2. Select Connections.
+3. Click + to add a new connection.
+4. Create the following connections:
 
-   - **northwind_db**: Conexão para o banco de dados de origem (Northwind).
+   - **northwind_db**: 
      - **Conn Id**: `northwind_db`
      - **Conn Type**: `Postgres`
-     - **Host**: `northwind_db` (nome do serviço no `docker-compose.yml`)
+     - **Host**: `northwind_db` 
      - **Schema**: `northwind`
      - **Login**: `northwind_user`
      - **Password**: `thewindisblowing`
-     - **Port**: `5433`
+     - **Port**: `5432`
    
-   - **new_postgres_db**: Conexão para o banco de dados de destino.
+   - **new_postgres_db**: 
      - **Conn Id**: `new_postgres_db`
      - **Conn Type**: `Postgres`
-     - **Host**: `new_postgres_db` (nome do serviço no `docker-compose.yml`)
-     - **Schema**: `new_database`
+     - **Host**: `new_postgres_db`
+     - **Schema**: ``
      - **Login**: ``
      - **Password**: ``
-     - **Port**: `5434`
+     - **Port**: `5432`
 
 
 ### 5. Init DAG
