@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 import os
 import pandas as pd
 from airflow import DAG
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
+import json
 
 
 def get_all_tables():
@@ -147,6 +148,60 @@ def load_csv_to_warehouse(execution_date):
             raise
 
 
+def log_execution_results(execution_date):
+    """Log execution results to JSON and CSV files"""
+    import json
+
+    pg_hook = PostgresHook(postgres_conn_id='new_postgres_db')
+
+    # Consulta para métricas gerais
+    results = pg_hook.get_records("""
+        SELECT 
+            COUNT(DISTINCT wo.order_id) as total_orders,
+            COUNT(wod.order_detail_id) as total_details,
+            current_timestamp as execution_timestamp
+        FROM warehouse_orders wo 
+        LEFT JOIN warehouse_order_details wod 
+        ON wo.order_id = wod.order_id
+    """)
+
+    # Consulta para juntar os dados das tabelas
+    joined_data = pg_hook.get_pandas_df("""
+        SELECT 
+            wo.order_id,
+            wo.customer_id,
+            wo.order_date,
+            wo.shipped_date,
+            wod.product_id,
+            wod.unit_price,
+            wod.quantity,
+            wod.discount,
+            (wod.unit_price * wod.quantity * (1 - wod.discount)) as total_amount
+        FROM warehouse_orders wo 
+        JOIN warehouse_order_details wod 
+        ON wo.order_id = wod.order_id
+        ORDER BY wo.order_id
+    """)
+
+    # Criar diretório para os resultados
+    results_dir = f'/opt/airflow/data/results/{execution_date}'
+    os.makedirs(results_dir, exist_ok=True)
+
+    # Salvar JSON com métricas
+    with open(f'{results_dir}/execution_results.json', 'w') as f:
+        json.dump({
+            'execution_date': execution_date,
+            'total_orders': results[0][0],
+            'total_order_details': results[0][1],
+            'execution_timestamp': results[0][2].isoformat()
+        }, f, indent=4)
+
+    # Salvar CSV com dados unidos
+    csv_path = f'{results_dir}/orders_with_details.csv'
+    joined_data.to_csv(csv_path, index=False)
+    print(f"Saved joined data to {csv_path}")
+
+
 # Define the DAG
 with DAG(
     'complete_postgres_etl',
@@ -163,22 +218,32 @@ with DAG(
     max_active_runs=1,
 ) as dag:
 
+    # Step 1 tasks (extrações)
     extract_postgres_data_task = PythonOperator(
         task_id='extract_postgres_data',
         python_callable=extract_postgres_data,
         op_kwargs={'execution_date': '{{ ds }}'},
     )
 
+    extract_csv_task = PythonOperator(
+        task_id='load_csv_to_warehouse',
+        python_callable=load_csv_to_warehouse,
+        op_kwargs={'execution_date': '{{ ds }}'},
+    )
+
+    # Step 2 tasks (load)
     load_new_warehouse_task = PythonOperator(
         task_id='load_new_warehouse',
         python_callable=load_to_new_warehouse,
         op_kwargs={'execution_date': '{{ ds }}'},
     )
 
-    load_csv_task = PythonOperator(
-        task_id='load_csv_to_warehouse',
-        python_callable=load_csv_to_warehouse,
+    # Logging task
+    log_results_task = PythonOperator(
+        task_id='log_execution_results',
+        python_callable=log_execution_results,
         op_kwargs={'execution_date': '{{ ds }}'},
     )
 
-    extract_postgres_data_task >> load_new_warehouse_task >> load_csv_task
+    [extract_postgres_data_task,
+        extract_csv_task] >> load_new_warehouse_task >> log_results_task

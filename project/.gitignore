@@ -1,5 +1,4 @@
-/data/csv
-/data/postgres
 /dbdata
 /new_postgres_data
+/logs
 .env
