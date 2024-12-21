@@ -92,7 +92,7 @@ This will trigger the reprocessing for the selected date range.
 ---
 
 ## ETL Evidance
-![image](project\ETL-airflow.PNG)
+![image](project/ETL-airflow.PNG)
 
 ---
 
