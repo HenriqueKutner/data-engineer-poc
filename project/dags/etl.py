@@ -47,7 +47,22 @@ def extract_postgres_data(execution_date):
             raise
 
 
-def load_to_new_warehouse(execution_date):
+def extract_csv_data(execution_date):
+    """Extract limited CSV data and save to local disk"""
+    # Create directory for this execution date
+    output_dir = f'/opt/airflow/data/csv/{execution_date}'
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Read only 3 rows from CSV
+    csv_path = '/opt/airflow/data/order_details.csv'
+    df = pd.read_csv(csv_path, nrows=3)
+    parquet_path = f'{output_dir}/order_details.parquet'
+    df.to_parquet(parquet_path, index=False)
+
+    print(f"Successfully extracted {len(df)} rows from CSV file to {parquet_path}")
+
+
+def load_orders_to_warehouse(execution_date):
     """Load orders data to warehouse"""
     pg_hook = PostgresHook(postgres_conn_id='new_postgres_db')
 
@@ -67,9 +82,8 @@ def load_to_new_warehouse(execution_date):
     pg_hook.run(create_tables_sql)
 
     # Select relevant columns and handle duplicates
-    filtered_df = orders_df[['order_id',
-                             'customer_id', 'order_date', 'shipped_date']]
-    filtered_df = filtered_df.copy()  # Create a copy to avoid SettingWithCopyWarning
+    filtered_df = orders_df[['order_id', 'customer_id', 'order_date', 'shipped_date']]
+    filtered_df = filtered_df.copy()
     filtered_df.drop_duplicates(subset=['order_id'], inplace=True)
 
     # Insert data with upsert logic
@@ -96,21 +110,13 @@ def load_to_new_warehouse(execution_date):
             raise
 
 
-def load_csv_to_warehouse(execution_date):
-    """Load limited CSV data to warehouse"""
+def load_order_details_to_warehouse(execution_date):
+    """Load order details data to warehouse"""
     pg_hook = PostgresHook(postgres_conn_id='new_postgres_db')
 
-    # Create directory for this execution date
-    output_dir = f'/opt/airflow/data/csv/{execution_date}'
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Read only 3 rows from CSV
-    csv_path = '/opt/airflow/data/order_details.csv'
-    df = pd.read_csv(csv_path, nrows=3)
-    parquet_path = f'{output_dir}/order_details.parquet'
-    df.to_parquet(parquet_path, index=False)
-
-    print(f"Loaded {len(df)} rows from CSV file")
+    # Load order details data
+    parquet_path = f'/opt/airflow/data/csv/{execution_date}/order_details.parquet'
+    df = pd.read_parquet(parquet_path)
 
     # Create warehouse_order_details table if it doesn't exist
     create_table_sql = """
@@ -143,18 +149,15 @@ def load_csv_to_warehouse(execution_date):
                 row['discount']
             ))
         except Exception as e:
-            print(
-                f"Error processing order detail for order {row['order_id']}: {e}")
+            print(f"Error processing order detail for order {row['order_id']}: {e}")
             raise
 
 
 def log_execution_results(execution_date):
     """Log execution results to JSON and CSV files"""
-    import json
-
     pg_hook = PostgresHook(postgres_conn_id='new_postgres_db')
 
-    # Consulta para métricas gerais
+    # Query for general metrics
     results = pg_hook.get_records("""
         SELECT 
             COUNT(DISTINCT wo.order_id) as total_orders,
@@ -165,7 +168,7 @@ def log_execution_results(execution_date):
         ON wo.order_id = wod.order_id
     """)
 
-    # Consulta para juntar os dados das tabelas
+    # Query to join table data
     joined_data = pg_hook.get_pandas_df("""
         SELECT 
             wo.order_id,
@@ -183,11 +186,11 @@ def log_execution_results(execution_date):
         ORDER BY wo.order_id
     """)
 
-    # Criar diretório para os resultados
+    # Create directory for results
     results_dir = f'/opt/airflow/data/results/{execution_date}'
     os.makedirs(results_dir, exist_ok=True)
 
-    # Salvar JSON com métricas
+    # Save JSON with metrics
     with open(f'{results_dir}/execution_results.json', 'w') as f:
         json.dump({
             'execution_date': execution_date,
@@ -196,7 +199,7 @@ def log_execution_results(execution_date):
             'execution_timestamp': results[0][2].isoformat()
         }, f, indent=4)
 
-    # Salvar CSV com dados unidos
+    # Save CSV with joined data
     csv_path = f'{results_dir}/orders_with_details.csv'
     joined_data.to_csv(csv_path, index=False)
     print(f"Saved joined data to {csv_path}")
@@ -218,23 +221,29 @@ with DAG(
     max_active_runs=1,
 ) as dag:
 
-    # Step 1 tasks (extrações)
+    # Extract tasks
     extract_postgres_data_task = PythonOperator(
         task_id='extract_postgres_data',
         python_callable=extract_postgres_data,
         op_kwargs={'execution_date': '{{ ds }}'},
     )
 
-    extract_csv_task = PythonOperator(
-        task_id='load_csv_to_warehouse',
-        python_callable=load_csv_to_warehouse,
+    extract_csv_data_task = PythonOperator(
+        task_id='extract_csv_data',
+        python_callable=extract_csv_data,
         op_kwargs={'execution_date': '{{ ds }}'},
     )
 
-    # Step 2 tasks (load)
-    load_new_warehouse_task = PythonOperator(
-        task_id='load_new_warehouse',
-        python_callable=load_to_new_warehouse,
+    # Load tasks
+    load_orders_task = PythonOperator(
+        task_id='load_orders_to_warehouse',
+        python_callable=load_orders_to_warehouse,
+        op_kwargs={'execution_date': '{{ ds }}'},
+    )
+
+    load_order_details_task = PythonOperator(
+        task_id='load_order_details_to_warehouse',
+        python_callable=load_order_details_to_warehouse,
         op_kwargs={'execution_date': '{{ ds }}'},
     )
 
@@ -245,5 +254,5 @@ with DAG(
         op_kwargs={'execution_date': '{{ ds }}'},
     )
 
-    [extract_postgres_data_task,
-        extract_csv_task] >> load_new_warehouse_task >> log_results_task
+    # Define task dependencies
+    [extract_postgres_data_task, extract_csv_data_task] >> load_orders_task >> load_order_details_task >> log_results_task
