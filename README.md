@@ -71,7 +71,7 @@ The Airflow CLI is not available through the UI. It must be accessed via the ter
    docker exec -it [your-airflow-container-name] bash
 2. Run the command:
     ```bash
-    airflow dags backfill -s 2024-01-01 -e 2024-01-05 complete_postgres_etl bash
+    airflow dags backfill -s 2024-01-01 -e 2024-01-05 indicium_challenge_etl bash
 ### 7. How to Reprocess Data with a Date Range in the Airflow UI:
 
 1. Open your DAG in the Airflow UI.

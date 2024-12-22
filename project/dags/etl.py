@@ -207,7 +207,7 @@ def log_execution_results(execution_date):
 
 # Define the DAG
 with DAG(
-    'complete_postgres_etl',
+    'indicium_challenge_etl',
     default_args={
         'owner': 'airflow',
         'start_date': days_ago(1),
