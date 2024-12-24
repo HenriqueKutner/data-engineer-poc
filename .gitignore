@@ -1,0 +1,4 @@
+airflow/bin/airflow
+my-meltano-project/analyze/.gitkeep
+newvenv/bin/pip
+newvenv
