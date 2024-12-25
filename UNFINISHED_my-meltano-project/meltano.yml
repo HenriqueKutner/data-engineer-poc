@@ -1,0 +1,37 @@
+version: 1
+default_environment: dev
+project_id: c10c0a3c-e015-4d90-9405-36d975b01848
+environments:
+- name: dev
+- name: staging
+- name: prod
+plugins:
+  extractors:
+  - name: tap-csv
+    variant: meltanolabs
+    pip_url: git+https://github.com/MeltanoLabs/tap-csv.git
+    config:
+      csv_files_definition: 
+        /home/henrique/data/indicium-challenge/my-meltano-project/orchestrate/airflow/config_extract_csv.json
+  - name: tap-postgres
+    variant: meltanolabs
+    pip_url: git+https://github.com/MeltanoLabs/tap-postgres.git
+  - name: tap-parquet
+    variant: ae-nv
+    pip_url: git+https://github.com/AE-nv/tap-parquet.git
+  loaders:
+  - name: target-jsonl
+    variant: andyh1203
+    pip_url: target-jsonl
+  - name: target-postgres
+    variant: meltanolabs
+    pip_url: meltanolabs-target-postgres
+  - name: target-parquet
+    variant: automattic
+    pip_url: git+https://github.com/Automattic/target-parquet.git
+  utilities:
+  - name: airflow
+    variant: apache
+    pip_url: git+https://github.com/meltano/airflow-ext.git@main apache-airflow==2.8.1
+      --constraint 
+      https://raw.githubusercontent.com/apache/airflow/constraints-2.8.1/constraints-no-providers-${MELTANO__PYTHON_VERSION}.txt

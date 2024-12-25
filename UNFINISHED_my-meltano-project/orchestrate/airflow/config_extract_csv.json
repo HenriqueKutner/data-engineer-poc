@@ -1,0 +1,13 @@
+[
+  {
+    "entity": "order_details",
+    "path": "/home/henrique/data/indicium-challenge/my-meltano-project/extract/order_details.csv",
+    "keys": [
+      "order_id",
+      "product_id",
+      "unit_price",
+      "quantity",
+      "discount"
+    ]
+  }
+]

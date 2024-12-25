@@ -2,3 +2,6 @@ airflow/bin/airflow
 my-meltano-project/analyze/.gitkeep
 newvenv/bin/pip
 newvenv
+venvmeltan/bin
+my-meltano-project/orchestrate/output/public-suppliers.jsonl
+venvmeltan/lib
