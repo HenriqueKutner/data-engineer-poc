@@ -1,6 +1,5 @@
 # INDICIUM Challenge
 
-This project uses Apache Airflow to orchestrate an ETL process that extracts data from a PostgreSQL database, performs transformations, and loads the data into a new database. The process also includes loading data from a CSV file into the target database.
 
 ## Requirements
 
@@ -45,7 +44,7 @@ After accessing the Airflow interface, you need to configure the connections to 
      - **Schema**: `northwind`
      - **Login**: `northwind_user`
      - **Password**: `thewindisblowing`
-     - **Port**: `5432`
+     - **Port**: `5433`
    
    - **new_postgres_db**: 
      - **Conn Id**: `new_postgres_db`
@@ -54,7 +53,7 @@ After accessing the Airflow interface, you need to configure the connections to 
      - **Schema**: ``
      - **Login**: ``
      - **Password**: ``
-     - **Port**: `5432`
+     - **Port**: `5434`
 
 ---
 ### 5. Init DAG
